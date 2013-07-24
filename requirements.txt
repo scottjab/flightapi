@@ -1,0 +1,6 @@
+requests
+beautifulsoup4
+pymetar
+sqlalchemy
+flask
+Flask-SQLAlchemy 
