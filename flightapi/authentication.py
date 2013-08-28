@@ -27,7 +27,6 @@ class Authentication(object):
         @wraps(f)
         def decorated(*args, **kwargs):
             auth = request.authorization
-            print auth
             if auth == None:
                 try:
                     return self.authentication()
