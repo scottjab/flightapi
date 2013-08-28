@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from flask import Flask
-from flask import abort
+from flask import abort, request
 
 import weather
 
@@ -22,6 +22,14 @@ logging.basicConfig(format=format, level=level)
 fapi = Flask(__name__)
 
 auth = Authentication(fapi)
+
+@fapi.route('/api/distance', methods=['GET'])
+@auth.required
+def distance():
+    shit = json.loads(request.get_data())
+    print shit
+    #import ipdb; ipdb.set_trace()
+    return shit['start']
 
 @fapi.route('/api/taf/<station>', methods=['GET'])
 @auth.required
@@ -74,9 +82,6 @@ def nope():
 @fapi.route('/favicon.ico')
 def go_home_you_are_drunk():
     abort(410)
-
-
-
 
 if __name__ == '__main__':
     fapi.run()
