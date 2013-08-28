@@ -3,6 +3,8 @@
 from flask import Flask
 from flask import abort
 
+from authentication import Authentication
+
 from bs4 import BeautifulSoup
 
 import pymetar
@@ -22,8 +24,10 @@ logging.basicConfig(format=format, level=level)
 
 fapi = Flask(__name__)
 
+auth = Authentication(fapi)
 
 @fapi.route('/api/taf/<station>', methods=['GET'])
+@auth.required
 def taf(station):
     taf = {}
     try:
@@ -36,6 +40,7 @@ def taf(station):
 
 
 @fapi.route('/api/metar/<station>', methods=['GET'])
+@auth.required
 def metar(station):
     metar = {}
     try:
@@ -48,6 +53,7 @@ def metar(station):
 
 
 @fapi.route('/api/long_metar/<station>', methods=['GET'])
+@auth.required
 def long_metar(station):
     metar = {}
     try:
