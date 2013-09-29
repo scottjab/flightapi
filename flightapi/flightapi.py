@@ -7,6 +7,8 @@ import weather
 
 from authentication import Authentication
 
+from navigation import Navigation
+
 import json
 import os
 import logging
@@ -22,14 +24,6 @@ logging.basicConfig(format=format, level=level)
 fapi = Flask(__name__)
 
 auth = Authentication(fapi)
-
-@fapi.route('/api/distance', methods=['GET'])
-@auth.required
-def distance():
-    shit = json.loads(request.get_data())
-    print shit
-    #import ipdb; ipdb.set_trace()
-    return shit['start']
 
 @fapi.route('/api/taf/<station>', methods=['GET'])
 @auth.required
@@ -72,6 +66,43 @@ def long_metar(station):
         print e
         return json.dumps("Error: %s" % station)
         abort(500)
+
+@fapi.route('/api/distance', methods=['PUT'])
+@auth.required
+def distance():
+    if request.method == 'PUT':
+        if request.data is not None:
+            try:
+                data = json.loads(request.data)
+                source = data['source']
+                destination = data['destination']
+                nautical_miles = Navigation.distance(source, destination)
+                distance = {}
+                distance['NM'] = nautical_miles
+                distance['km'] = nautical_miles * 1.852
+                distance['mi'] = nautical_miles * 1.150779
+                return json.dumps(distance)
+            except ValueError:
+               json.dumps("Error: JSON PARSING FAILED")
+               abort(500)
+
+# I may want to change this to a PUT.
+@fapi.route('/api/airport/<airport>', motheds=['GET'])
+@auth.required
+def apt(airport):
+    if airport is not None:
+        airport = Navigation.get_airport_info(airprot)
+        if airport is None:
+            return json.dumps('Airport not found')
+        # I may overload this, but this will work for now
+        try:
+            return json.dumps(airport)
+        except ValueError:
+            return json.dumps('ERROR: encoding airport data')
+            abort(500)
+    else:
+        return json.dumps('ERRER: need an airport ICAO')
+
 
 # Default routes
 @fapi.route('/')

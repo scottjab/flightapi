@@ -1,0 +1,1 @@
+ curl -i -H "Content-Type: application/json" -X GET -d '{"start":"KPDX", "end":"KORD"}' http://user:password@127.0.0.1:5000/api/distance
