@@ -232,7 +232,7 @@ class Navigation:
         # sql = '''select id,airwayid,level,waypoint1id,waypoint2id,isstart,isend from airwaylegs where airwayid = %s and waypoint1id = %s  and waypoint2id <> %s''' % (airwayid, next, current)
         # print "get_airway: " + sql
         # c.execute(sql)
-        res = session.query(AirwayLeg).filter(AirwayLeg.id == airwayid, 
+        res = session.query(AirwayLeg).filter(AirwayLeg.id == airwayid,
                                               AirwayLeg.waypoint1ID == next,
                                               AirwayLeg.waypoint2ID != current)
         for al in res:
@@ -277,7 +277,7 @@ class Navigation:
         return waypoints
 
     def get_navaid_by_id(self, idName, lastNavaid):
-        """Returns the Closest NavAid with the ID Given, 
+        """Returns the Closest NavAid with the ID Given,
            if no last Navaid is given it will return the first row"""
         # holy crap do I need to rewrite this
         Session = sessionmaker(bind=self.engine)
@@ -369,7 +369,7 @@ class Navigation:
         else:
             return str(reciprocalHeading)
 
-    def gert_navaid_info(self, ident):
+    def get_navaid_info(self, ident):
         """Returns navaid info to bot"""
         ident = str(ident).upper()
         Session = sessionmaker(bind=self.engine)
