@@ -25,6 +25,7 @@ fapi = Flask(__name__)
 
 auth = Authentication(fapi)
 
+
 @fapi.route('/api/taf/<station>', methods=['GET'])
 @auth.required
 def taf(station):
@@ -67,6 +68,7 @@ def long_metar(station):
         return json.dumps("Error: %s" % station)
         abort(500)
 
+
 @fapi.route('/api/distance', methods=['PUT'])
 @auth.required
 def distance():
@@ -83,25 +85,39 @@ def distance():
                 distance['mi'] = nautical_miles * 1.150779
                 return json.dumps(distance)
             except ValueError:
-               json.dumps("Error: JSON PARSING FAILED")
-               abort(500)
+                json.dumps("Error: JSON PARSING FAILED")
+                abort(500)
+
 
 # I may want to change this to a PUT.
-@fapi.route('/api/airport/<airport>', motheds=['GET'])
+@fapi.route('/api/airport/<airport>', metheds=['GET'])
 @auth.required
 def apt(airport):
     if airport is not None:
-        airport = Navigation.get_airport_info(airprot)
+        airport = Navigation.get_airport_info(airport)
         if airport is None:
             return json.dumps('Airport not found')
         # I may overload this, but this will work for now
         try:
             return json.dumps(airport)
-        except ValueError:
+        except TypeError:
             return json.dumps('ERROR: encoding airport data')
             abort(500)
     else:
         return json.dumps('ERRER: need an airport ICAO')
+
+
+@fapi.route('/api/navaid/<id>', methods=['GET'])
+@auth.required
+def navaid(navaid_id):
+    if navaid_id is not None:
+        navaid = Navigation.get_navaid_info(navaid_id)
+        if navaid is None:
+            return json.dumps('Navaid not found')
+        try:
+            return json.dumps(navaid)
+        except TypeError:
+            return json.dumps('ERROR: encoding navaid data')
 
 
 # Default routes
