@@ -6,16 +6,16 @@ This code is a horror really needs review.
 
 """
 
-import RouteLeg
+from routeleg import RouteLeg
 import math
 import re
-import NavAid
+from navaid import NavAid
 import numpy as np
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import and_
 
-from NavigationTables import *
+from navaidtables import *
 
 
 class Navigation:
@@ -285,11 +285,11 @@ class Navigation:
         res = session.query("Ident", "Latitude", "Longtitude", "Name", "Navaidid").from_statement(
             "SELECT ICAO AS Ident, Latitude, Longtitude, Name, primaryid AS Navaidid FROM Airports WHERE ICAO = :ident UNION ALL SELECT Ident, Latitude, Longtitude, Name, Navaidid FROM Waypoints WHERE Ident = :ident").params(ident=idName)
 
-        navaid = NavAid.NavAid()
+        navaid = NavAid()
         smallAid = None
 
         for row in res:
-            currentNavaid = NavAid.NavAid()
+            currentNavaid = NavAid()
             currentNavaid.navaidID = row.Ident
             currentNavaid.lat = row.Latitude
             currentNavaid.lon = row.Longtitude
@@ -301,7 +301,7 @@ class Navigation:
                 freqResult = session.query(Navaid).filter(
                     Navaid.ident == row.Ident).first()
                 freq = int(freqResult.freq)
-                currentNavaid.Freq = self.decode_freq(freq)
+                currentNavaid.freq = self.decode_freq(freq)
             if lastNavaid is not None:
                 tempDistance = self.distance(lastNavaid, currentNavaid)
                 if smallAid is None:
@@ -323,7 +323,7 @@ class Navigation:
         calculatedRoute = []
         # need to make this NOT JAVAY
         for i in range(len(route) - 1):
-            leg = RouteLeg.RouteLeg()
+            leg = RouteLeg()
             leg.startNavaid = self.get_navaid_by_id(
                 idName=route[i], lastNavaid=None)
             leg.endNavaid = self.get_navaid_by_id(
@@ -473,7 +473,7 @@ class Navigation:
                 rw['ident'] = ident + "/" + self.find_reciprocal(ident)
                 rw['length'] = runway.length
                 rw['heading'] = runway.trueHeading
-                rw['surfice'] = runway.surfaceType.description
+                rw['surface'] = runway.surfaceType.description
                 rw['elevation'] = runway.elevation
                 runways.append(rw)
         resultSet['runways'] = runways
