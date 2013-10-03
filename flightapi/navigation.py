@@ -12,7 +12,7 @@ import re
 from navaid import NavAid
 import numpy as np
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.sql import and_
 
 from navaidtables import *
@@ -97,17 +97,17 @@ class Navigation:
         query = session.query(Waypoint).filter(Waypoint.ident == name)
         waypoints = []
 
-        for waypoint in query:
+        for waypoint_row in query:
             # converting to dictionary for now, will fix later.
             waypoint = {}
-            waypoint['id'] = waypoint.id
-            waypoint['ident'] = waypoint.ident
-            waypoint['collocated'] = waypoint.collocated
-            waypoint['name'] = waypoint.name
-            waypoint['latitude'] = waypoint.latitude
-            waypoint['longtitude'] = waypoint.longtitude
-            waypoint['navaidId'] = waypoint.navaidId
-            waypoint['navaid'] = waypoint.navaid
+            waypoint['id'] = waypoint_row.id
+            waypoint['ident'] = waypoint_row.ident
+            waypoint['collocated'] = waypoint_row.collocated
+            waypoint['name'] = waypoint_row.name
+            waypoint['latitude'] = waypoint_row.latitude
+            waypoint['longtitude'] = waypoint_row.longtitude
+            waypoint['navaidId'] = waypoint_row.navaidID
+            waypoint['navaid'] = waypoint_row.navaid
             waypoints.append(waypoint)
         session.close()
         return waypoints
@@ -262,7 +262,7 @@ class Navigation:
         # waypointSQL = '''select ident,Latitude,Longtitude from waypoints where id = %i'''
         # c.execute(terminalLegsSQL % (transition, airport, name))
 
-        res = session.query("id", "wptid").from_statement("select id,wptid from terminallegs where  Transition = :transition and terminalid in (select id from terminals where ICAO = :airport and fullname = :name").params(
+        res = session.query("ID", "WptID").from_statement("select ID,WptID from TerminalLegs where Transition = :transition and TerminalID in (select ID from Terminals where ICAO = :airport and FullName = :name)").params(
             transition=transition, airport=airport, name=name)
 
         waypointidlist = []
