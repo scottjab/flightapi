@@ -1,1 +1,12 @@
- curl -i -H "Content-Type: application/json" -X GET -d '{"start":"KPDX", "end":"KORD"}' http://user:password@127.0.0.1:5000/api/distance
+Randome notes.
+
+' '.join(nav.parser('KABQ LARGO2 ZUN EAGUL5 KPHX'))
+' '.join(nav.parser('KPHX CHILY3 BTY LOMIA LMT MOXEE6 KPDX'))
+nav.get_waypoints_by_name('MINNE')
+
+curl -i -H "Content-Type: application/json" -X PUT -d '{"source":"PDX", "destination":"SFO"}' http://user:password@127.0.0.1:5000/api/distance 
+
+
+curl -i -X GET  http://user:password@127.0.0.1:5000/api/airport/KPDX 
+
+curl -i -X GET http://127.0.0.1:5000/api/navaid/BACAN
