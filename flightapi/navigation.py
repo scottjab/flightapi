@@ -433,8 +433,11 @@ class Navigation:
             session.close()
             return results
         else:
+
+            results = self.get_waypoints_by_name(ident)
             session.close()
-            return None
+            # return results, if none return none.
+            return results
 
     def get_airport_info(self, icao):
         """Grab info about a field for the bot"""

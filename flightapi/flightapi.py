@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask import abort, request
+
+from sqlalchemy import create_engine
 
 import weather
 
@@ -20,10 +22,27 @@ format = '%(asctime)s [%(name)s] [%(levelname)s] %(message)s'
 DEBUG = bool(os.environ.get('FAPIDEBUG', False))
 level = logging.DEBUG if DEBUG else logging.INFO
 logging.basicConfig(format=format, level=level)
+conf = os.environ.get('FAPICONF', 'flightapi.json')
+conf = os.path.realpath(conf)
+CONF = {}
+try:
+    logging.info('Loading %s configuration file' % (conf, ))
+    CONF = json.load(open(conf, 'rb'))
+except Exception as e:
+    logging.warning('Could not load configuration file: %r' % (e,))
+
 
 fapi = Flask(__name__)
 
 auth = Authentication(fapi)
+
+eng = create_engine('mysql+mysqldb://%s:%s@%s/%s' % (CONF['dbuser'],
+                                                     CONF['dbpass'],
+                                                     CONF['dbhost'],
+                                                     CONF['db']),
+                    pool_size=2,
+                    pool_recycle=3600,
+                    echo=False)
 
 
 @fapi.route('/api/taf/<station>', methods=['GET'])
@@ -33,10 +52,10 @@ def taf(station):
     try:
         taf['station'] = weather.get_taf(station)
         print taf
-        return json.dumps({'METAR': taf})
+        return jsonify({'METAR': taf})
     except Exception as e:
         print e.print_tb()
-        return json.dumps("Error: %s" % station)
+        return jsonify("Error: %s" % station)
 
 
 @fapi.route('/api/metar/<station>', methods=['GET'])
@@ -45,10 +64,10 @@ def metar(station):
     metar = {}
     try:
         metar[station] = str(weather.get_parsed_metar(station).code)
-        return json.dumps(metar)
+        return jsonify(metar)
     except Exception as e:
         print e
-        return json.dumps("Error: %s" % station)
+        return jsonify("Error: %s" % station)
         abort(500)
 
 
@@ -62,10 +81,10 @@ def long_metar(station):
 
         report = weather.metar_as_dict(metar)
         logging.debug(report)
-        return json.dumps(report)
+        return jsonify(report)
     except Exception as e:
         print e
-        return json.dumps("Error: %s" % station)
+        return jsonify("Error: %s" % station)
         abort(500)
 
 
@@ -83,41 +102,49 @@ def distance():
                 distance['NM'] = nautical_miles
                 distance['km'] = nautical_miles * 1.852
                 distance['mi'] = nautical_miles * 1.150779
-                return json.dumps(distance)
+                return jsonify(distance)
             except ValueError:
-                json.dumps("Error: JSON PARSING FAILED")
+                jsonify("Error: JSON PARSING FAILED")
                 abort(500)
 
 
 # I may want to change this to a PUT.
-@fapi.route('/api/airport/<airport>', metheds=['GET'])
+@fapi.route('/api/airport/<icao>', methods=['GET'])
 @auth.required
-def apt(airport):
-    if airport is not None:
-        airport = Navigation.get_airport_info(airport)
+def apt(icao):
+    icao = icao.upper()
+    nav = Navigation(eng)
+    if icao is not None:
+        airport = nav.get_airport_info(icao)
         if airport is None:
-            return json.dumps('Airport not found')
+            return jsonify('Airport not found')
         # I may overload this, but this will work for now
         try:
-            return json.dumps(airport)
+            airport['ICAO'] = icao
+            return jsonify(airport)
         except TypeError:
-            return json.dumps('ERROR: encoding airport data')
+            return jsonify('ERROR: encoding airport data')
             abort(500)
     else:
-        return json.dumps('ERRER: need an airport ICAO')
+        return jsonify('ERRER: need an airport ICAO')
 
 
-@fapi.route('/api/navaid/<id>', methods=['GET'])
+@fapi.route('/api/navaid/<navaid_id>', methods=['GET'])
 @auth.required
 def navaid(navaid_id):
+    nav = Navigation(eng)
     if navaid_id is not None:
-        navaid = Navigation.get_navaid_info(navaid_id)
+        navaid = nav.get_navaid_info(navaid_id)
         if navaid is None:
-            return json.dumps('Navaid not found')
+            return jsonify('Navaid not found')
         try:
-            return json.dumps(navaid)
+            logging.info(json.dumps(navaid))
+            if len(navaid) > 0:
+                return jsonify(navaids=navaid)
+            else:
+                jsonify('ERROR: %s not found' % (navaid_id, ))
         except TypeError:
-            return json.dumps('ERROR: encoding navaid data')
+            return jsonify('ERROR: encoding navaid data')
 
 
 # Default routes
