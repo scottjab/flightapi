@@ -12,6 +12,8 @@ import re
 from navaid import NavAid
 import numpy as np
 
+import logging
+
 from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.sql import and_
 
@@ -30,6 +32,14 @@ class Navigation:
             decodedFreq = str(hex(encodedfreq))[2:]
             decodedFreq = "%s.%s" % (decodedFreq[:3], decodedFreq[3:5])
             return decodedFreq
+        except:
+            return None
+
+    def distance_by_name(self, origin, destination):
+        try:
+            origin = self.get_navaid_by_id(origin, None)
+            destination = self.get_navaid_by_id(destination, origin)
+            return self.distance(origin, destination)
         except:
             return None
 

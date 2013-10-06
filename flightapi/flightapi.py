@@ -91,13 +91,14 @@ def long_metar(station):
 @fapi.route('/api/distance', methods=['PUT'])
 @auth.required
 def distance():
+    nav = Navigation(eng)
     if request.method == 'PUT':
         if request.data is not None:
             try:
                 data = json.loads(request.data)
-                source = data['source']
-                destination = data['destination']
-                nautical_miles = Navigation.distance(source, destination)
+                source = data['source'].upper()
+                destination = data['destination'].upper()
+                nautical_miles = nav.distance_by_name(source, destination)
                 distance = {}
                 distance['NM'] = nautical_miles
                 distance['km'] = nautical_miles * 1.852
