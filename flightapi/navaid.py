@@ -9,3 +9,4 @@ class NavAid:
     lat = None
     def getCoords(self):
         return (self.lat,self.lon)
+
