@@ -1,0 +1,6 @@
+{
+    "mysqlserver": "mysqlhostname",
+    "user": "dbusername",
+    "password": "dbpassword",
+    "database": "navdata"
+}
