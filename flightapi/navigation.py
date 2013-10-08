@@ -90,6 +90,30 @@ class Navigation:
         bearing = math.atan2(y, x)
         return (math.degrees(bearing) + 360) % 360
 
+    def get_waypoint(self, ident):
+        Session = sessionmaker(bind=self.engine)
+        session = Session()
+        query = session.query(Waypoint).filter(Waypoint.ident == ident)
+        waypoints = []
+
+        for waypoint_row in query:
+            waypoint = {}
+            if waypoint_row.navaid is not None:
+                navaid = waypoint_row.navaid
+                waypoint['freq'] = self.decode_freq(navaid.freq)
+                waypoint['channel'] = navaid.channel
+                waypoint['usage'] = navaid.usage
+                waypoint['elevation'] = navaid.elevation
+                waypoint['slavedVar'] = navaid.slavedVar
+                waypoint['name'] = navaid.name
+            waypoint['ident'] = waypoint_row.ident
+            waypoint['latitude'] = waypoint_row.latitude
+            waypoint['longtitude'] = waypoint_row.longtitude
+            waypoints.append(waypoint)
+        if len(waypoints) > 0:
+            return waypoints
+        return None
+
     def get_waypoint_distance(self, start, end):
         return self.distance((start['latitude'],
                               start['longtitude']),

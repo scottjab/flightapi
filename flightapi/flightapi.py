@@ -135,7 +135,7 @@ def apt(icao):
 def navaid(navaid_id):
     nav = Navigation(eng)
     if navaid_id is not None:
-        navaid = nav.get_navaid_info(navaid_id)
+        navaid = nav.get_waypoint(navaid_id)
         if navaid is None:
             return jsonify('Navaid not found')
         try:
