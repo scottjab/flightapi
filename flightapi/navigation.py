@@ -12,8 +12,6 @@ import re
 from navaid import NavAid
 import numpy as np
 
-import logging
-
 from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.sql import and_
 
@@ -351,34 +349,6 @@ class Navigation:
         h, m = divmod(m, 60)
         print "%d:%02d:%02d" % (h, m, s)
 
-    def find_reciprocal(self, runway):
-        runwayHeading = 0
-        runwayPosition = None
-        reciprocalPosition = None
-        reciprocalHeading = None
-
-        if len(runway) > 2:
-            runwayPosition = str(list(runway)[2])
-            runwayHeading = int(runway[:-1])
-        else:
-            runwayHeading = int(runway)
-        if runwayHeading <= 18:
-            reciprocalHeading = runwayHeading + 18
-        else:
-            reciprocalHeading = runwayHeading - 18
-
-        if runwayPosition is not None:
-            if runwayPosition == 'R':
-                reciprocalPosition = 'L'
-            elif runwayPosition == 'L':
-                reciprocalPosition = 'R'
-            else:
-                reciprocalPosition = 'C'
-        if reciprocalPosition is not None:
-            return str(reciprocalHeading) + reciprocalPosition
-        else:
-            return str(reciprocalHeading)
-
     def get_navaid_info(self, ident):
         """Returns navaid info to bot"""
         ident = str(ident).upper()
@@ -429,10 +399,7 @@ class Navigation:
                 morse += morseAlphabet[char.upper()] + " "
             result['morse'] = morse
             result['name'] = row[1]
-            encodedFreq = row[2]
-            decodedFreq = str(hex(row[2]))[2:]
-            decodedFreq = "%s.%s" % (decodedFreq[:3], decodedFreq[3:5])
-            result['freq'] = decodedFreq
+            result['freq'] = self.decode_freq(row[2])
             result['desc'] = row[3]
             result['country'] = row[4]
             if 'K' in result['country']:
@@ -456,73 +423,46 @@ class Navigation:
         session = Session()
 
         resultSet = {}
-        airportId = None
-        elevation = 0
-        name = ""
-        # airportSql = """select id,name,elevation from airports where ICAO like '%%%s' """ % icao
-        # print airportSql
-        # c.execute(airportSql)
         try:
             ap = session.query(Airport).filter(
                 Airport.icao.like('%%%s' % icao)).one()
         except:
             return resultSet
-        airportId = ap.id
         resultSet['name'] = ap.name
         resultSet['elevation'] = ap.elevation
+        resultSet['latitude'] = ap.latitude
+        resultSet['longtitude'] = ap.longtitude
         runways = []
         # c.execute("""select ident, length, TrueHeading, Surface, Elevation
         # from runways where AirportID = %i order by ident""" % int(airportId))
 
         for runway in ap.runways:
-            ident = runway.ident
-            length = runway.length
-            if len(ident) > 2:
-                runwayHeading = int(ident[:-1])
-            else:
-                runwayHeading = int(ident)
-            if runwayHeading <= 18:
-                rw = {}
-                rw['ident'] = ident + "/" + self.find_reciprocal(ident)
-                rw['length'] = runway.length
-                rw['heading'] = runway.trueHeading
-                rw['surface'] = runway.surfaceType.description
-                rw['elevation'] = runway.elevation
-                runways.append(rw)
+            rw = {}
+            rw['ident'] = runway.ident
+            rw['length'] = runway.length
+            rw['heading'] = runway.trueHeading
+            rw['surface'] = runway.surfaceType.description
+            rw['elevation'] = runway.elevation
+            rw['latitude'] = runway.latitude
+            rw['longtitude'] = runway.longtitude
+            rw['width'] = runway.width
+            if len(runway.ils) > 0:
+                ilsobj = runway.ils[0]
+                ils = {}
+                ils['freq'] = self.decode_freq(ilsobj.freq)
+                ils['gs_angle'] = ilsobj.gsAngle
+                ils['latitude'] = ilsobj.latitude
+                ils['longtitude'] = ilsobj.longtitude
+                ils['category'] = ilsobj.category
+                ils['ident'] = ilsobj.ident
+                ils['localizer_course'] = ilsobj.locCourse
+                ils['crossing_height'] = ilsobj.crossingHeight
+                ils['has_dme'] = ilsobj.hasDme
+                ils['elevation'] = ilsobj.elevation
+                rw['ils'] = ils
+            runways.append(rw)
         resultSet['runways'] = runways
         session.close()
         return resultSet
 
-    def get_ils(self, airportICAO=None, runwayIdent=None):
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-        if airportICAO is None:
-            return "Need an airport and a runway."
-        if runwayIdent is None:
-            for airport in session.query(Airport).filter(Airport.icao == airportICAO):
-                runwayList = []
-                for runway in airport.runways:
-                    ils = runway.ils
-                    if len(ils) > 0:
-                        runwayList.append(runway.ident)
-                if len(runwayList) > 0:
-                    session.close()
-                    return "%s: ILS on the following runways: %s " % (airport.icao, ", ".join(runwayList))
-                else:
-                    session.close()
-                    return "%s does not have any ILSes available" % airport.icao
-        else:
-            for airport in session.query(Airport).filter(Airport.icao == airportICAO):
-                responses = []
-                for runway in session.query(Runway).filter(and_(Runway.airportID == airport.id, Runway.ident == runwayIdent)):
-                    if len(runway.ils) < 1:
-                        session.close()
-                        return "%s does not have an ILS." % runwayIdent
-                    for ils in runway.ils:
-                        responses.append("%s: Freq: %s  Course: %s  ident: %s" % (
-                            runwayIdent, self.decode_freq(ils.freq), ils.locCourse, ils.ident))
-                if len(responses) == 0:
-                    session.close()
-                    return "%s is not a vaild runway at %s." % (runwayIdent, airportICAO)
-                session.close()
-                return "%s: %s" % (airportICAO, "; ".join(responses))
+
