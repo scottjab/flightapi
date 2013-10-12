@@ -139,7 +139,8 @@ def navaid(navaid_id):
         if navaid is None:
             return jsonify('Navaid not found')
         try:
-            logging.info(json.dumps(navaid))
+            import pprint
+            logging.info(pprint.pformat(navaid))
             if len(navaid) > 0:
                 return jsonify(navaids=navaid)
             else:

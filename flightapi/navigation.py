@@ -13,7 +13,6 @@ from navaid import NavAid
 import numpy as np
 
 from sqlalchemy.orm import sessionmaker, aliased
-from sqlalchemy.sql import and_
 
 from navaidtables import *
 
@@ -90,10 +89,14 @@ class Navigation:
         bearing = math.atan2(y, x)
         return (math.degrees(bearing) + 360) % 360
 
-    def get_waypoint(self, ident):
+    def get_waypoint(self, ident, next_waypoint=None):
         Session = sessionmaker(bind=self.engine)
         session = Session()
-        query = session.query(Waypoint).filter(Waypoint.ident == ident)
+        query = None
+        if isinstance(ident, int):
+            query = session.query(Waypoint).filter(Waypoint.id == ident)
+        else:
+            query = session.query(Waypoint).filter(Waypoint.ident == ident)
         waypoints = []
 
         for waypoint_row in query:
@@ -101,6 +104,7 @@ class Navigation:
             if waypoint_row.navaid is not None:
                 navaid = waypoint_row.navaid
                 waypoint['freq'] = self.decode_freq(navaid.freq)
+                waypoint['morse'] = self.morse_code(waypoint_row.ident)
                 waypoint['channel'] = navaid.channel
                 waypoint['usage'] = navaid.usage
                 waypoint['elevation'] = navaid.elevation
@@ -109,7 +113,28 @@ class Navigation:
             waypoint['ident'] = waypoint_row.ident
             waypoint['latitude'] = waypoint_row.latitude
             waypoint['longtitude'] = waypoint_row.longtitude
+            waypoint['collocated'] = waypoint_row.collocated
             waypoints.append(waypoint)
+
+        # logic to figure out which waypoint you really want.
+        if next_waypoint is not None:
+            next_waypoints = None
+            if isinstance(next_wayoint, str):
+                next_waypoints = get_waypoint(next_waypoint)
+            elif isinstance(next_waypoint, dict):
+                next_waypoints = [next_waypoint]
+            if next_waypoints is not None:
+                current_shortest = None
+                shortest_waypoint = None
+                for waypoint in waypoints:
+                    for next_point in next_waypoints:
+                        distance = get_waypoint_distance(waypoint, next_point)
+                        if current_shortest is None:
+                            current_shortest = distance
+                            shortest_waypoint = waypoint
+                        elif distance < current_shortest:
+                            shortest_waypoint = waypoint
+                return [shortest_waypoint]
         if len(waypoints) > 0:
             return waypoints
         return None
@@ -119,50 +144,6 @@ class Navigation:
                               start['longtitude']),
                             (end['latitude'],
                              end['longtitude']))
-
-    def get_waypoints_by_name(self, name):
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-
-        # sql = '''select id,ident,collocated,name,latitude,longtitude,NavaidId
-        # from waypoints where ident = '%s' ''' % name
-        query = session.query(Waypoint).filter(Waypoint.ident == name)
-        waypoints = []
-
-        for waypoint_row in query:
-            # converting to dictionary for now, will fix later.
-            waypoint = {}
-            waypoint['id'] = waypoint_row.id
-            waypoint['ident'] = waypoint_row.ident
-            waypoint['collocated'] = waypoint_row.collocated
-            waypoint['name'] = waypoint_row.name
-            waypoint['latitude'] = waypoint_row.latitude
-            waypoint['longtitude'] = waypoint_row.longtitude
-            waypoint['navaidId'] = waypoint_row.navaidID
-            waypoint['navaid'] = waypoint_row.navaid
-            waypoints.append(waypoint)
-        session.close()
-        return waypoints
-
-    def get_waypoint_by_id(self, id):
-        # sql = '''select id,ident,collocated,name,latitude,longtitude,NavaidId
-        # from waypoints where id = %i ''' % id
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-        query = session.query(Waypoint).filter(Waypoint.id == id)
-        for waypoint in query:
-            # converting to dictionary for now, will fix later.
-            waypoint = {}
-            waypoint['id'] = waypoint.id
-            waypoint['ident'] = waypoint.ident
-            waypoint['collocated'] = waypoint.collocated
-            waypoint['name'] = waypoint.name
-            waypoint['latitude'] = waypoint.latitude
-            waypoint['longtitude'] = waypoint.longtitude
-            waypoint['navaidId'] = waypoint.navaidId
-            waypoint['navaid'] = waypoint.navaid
-            session.close()
-            return waypoint
 
     def remove_duplicate_waypoint(self, route):
             # hack to fix the fact that all loops are for eaches in python.
@@ -218,7 +199,6 @@ class Navigation:
         return self.remove_duplicate_waypoint(flownRoute)
 
     def get_airway(self, entry, airway, exit):
-
         # I am dumb.
         Session = sessionmaker(bind=self.engine)
         session = Session()
@@ -273,7 +253,7 @@ class Navigation:
                 print "WAYPOINTS: %s == %s " % (waypoint['id'], al.waypoint2ID)
                 if waypoint['id'] == al.waypoint2ID:
                     session.close()
-                    return " " + self.get_waypoint_by_id(al.waypoint1ID)['ident'] + " " + waypoint['ident']
+                    return " " + self.get_waypoint(al.waypoint1ID)[0]['ident'] + " " + waypoint['ident']
                     # TODO: FIX THIS
                     # route.append(self.get_waypoint_by_id(al.waypoint1ID)
                     # route.append(waypoint)
@@ -281,7 +261,7 @@ class Navigation:
             if al.isEnd > al.isStart:
                 return None
             print route
-            route.append(self.get_waypoint_by_id(al.waypoint1ID))
+            route.append(self.get_waypoint(al.waypoint1ID)[0])
             session.close()
             return self.get_airwayRoute(airwayid, al.waypoint1ID, al.waypoint2ID, end, route)
 
@@ -386,35 +366,6 @@ class Navigation:
         # navaidSQL = navaidSQLTemplate % ident
         # c.execute(navaidSQL)
         results = []
-        morseAlphabet = {
-            "A": ".-",
-            "B": "-...",
-            "C": "-.-.",
-            "D": "-..",
-            "E": ".",
-            "F": "..-.",
-            "G": "--.",
-            "H": "....",
-            "I": "..",
-            "J": ".---",
-            "K": "-.-",
-            "L": ".-..",
-            "M": "--",
-            "N": "-.",
-            "O": "---",
-            "P": ".--.",
-            "Q": "--.-",
-            "R": ".-.",
-            "S": "...",
-            "T": "-",
-            "U": "..-",
-            "V": "...-",
-            "W": ".--",
-            "X": "-..-",
-            "Y": "-.--",
-            "Z": "--..",
-            " ": "/"
-        }
         for row in res:
             result = {}
             result['ident'] = row[0]
@@ -435,7 +386,7 @@ class Navigation:
             return results
         else:
 
-            results = self.get_waypoints_by_name(ident)
+            results = self.get_waypoint(ident)
             session.close()
             # return results, if none return none.
             return results
@@ -479,6 +430,7 @@ class Navigation:
                 ils['longtitude'] = ilsobj.longtitude
                 ils['category'] = ilsobj.category
                 ils['ident'] = ilsobj.ident
+                ils['morse'] = self.morse_code(ilsobj.ident)
                 ils['localizer_course'] = ilsobj.locCourse
                 ils['crossing_height'] = ilsobj.crossingHeight
                 ils['has_dme'] = ilsobj.hasDme
@@ -489,4 +441,38 @@ class Navigation:
         session.close()
         return resultSet
 
+    def morse_code(self, text):
+        morseAlphabet = {
+            "A": ".-",
+            "B": "-...",
+            "C": "-.-.",
+            "D": "-..",
+            "E": ".",
+            "F": "..-.",
+            "G": "--.",
+            "H": "....",
+            "I": "..",
+            "J": ".---",
+            "K": "-.-",
+            "L": ".-..",
+            "M": "--",
+            "N": "-.",
+            "O": "---",
+            "P": ".--.",
+            "Q": "--.-",
+            "R": ".-.",
+            "S": "...",
+            "T": "-",
+            "U": "..-",
+            "V": "...-",
+            "W": ".--",
+            "X": "-..-",
+            "Y": "-.--",
+            "Z": "--..",
+            " ": "/"
+        }
+        result = []
+        for char in text:
+            result.append(morseAlphabet[char])
+        return " ".join(result)
 
