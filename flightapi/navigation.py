@@ -96,7 +96,7 @@ class Navigation:
         try:
             ident = int(ident)
             query = session.query(Waypoint).filter(Waypoint.id == ident)
-        except ValueError:
+        except (ValueError, TypeError):
             query = session.query(Waypoint).filter(Waypoint.ident == ident)
         waypoints = []
 
@@ -251,10 +251,10 @@ class Navigation:
     def get_terminal(self, airport, name, transition):
         Session = sessionmaker(bind=self.engine)
         session = Session()
-        query_template = "SELECT ID,WptID FROM TerminalLegs "
-        "WHERE Transition = :transition AND TerminalID "
-        "IN (select ID FROM Terminals "
-        "WHERE ICAO = :airport AND FullName = :name)"
+        query_template = """SELECT ID,WptID FROM TerminalLegs
+        WHERE Transition = :transition AND TerminalID
+        IN (select ID FROM Terminals
+        WHERE ICAO = :airport AND FullName = :name)"""
         res = session.query("ID", "WptID").from_statement(query_template).params(
             transition=transition, airport=airport, name=name)
         waypoints = []
