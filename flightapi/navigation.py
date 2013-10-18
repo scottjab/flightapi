@@ -93,9 +93,10 @@ class Navigation:
         Session = sessionmaker(bind=self.engine)
         session = Session()
         query = None
-        if isinstance(ident, int):
+        try:
+            ident = int(ident)
             query = session.query(Waypoint).filter(Waypoint.id == ident)
-        else:
+        except ValueError:
             query = session.query(Waypoint).filter(Waypoint.ident == ident)
         waypoints = []
 
@@ -119,8 +120,8 @@ class Navigation:
         # logic to figure out which waypoint you really want.
         if next_waypoint is not None:
             next_waypoints = None
-            if isinstance(next_wayoint, str):
-                next_waypoints = get_waypoint(next_waypoint)
+            if isinstance(next_waypoint, str):
+                next_waypoints = self.get_waypoint(next_waypoint)
             elif isinstance(next_waypoint, dict):
                 next_waypoints = [next_waypoint]
             if next_waypoints is not None:
@@ -128,7 +129,8 @@ class Navigation:
                 shortest_waypoint = None
                 for waypoint in waypoints:
                     for next_point in next_waypoints:
-                        distance = get_waypoint_distance(waypoint, next_point)
+                        distance = self.get_waypoint_distance(waypoint,
+                                                              next_point)
                         if current_shortest is None:
                             current_shortest = distance
                             shortest_waypoint = waypoint
@@ -167,7 +169,7 @@ class Navigation:
         arrAirport = tokens.pop()
         procedure = re.compile(r'.[0-9]', re.IGNORECASE)
         flownRoute = []
-        flownRoute.append(depAirport)
+        flownRoute.append(self.get_airport_info(depAirport))
         # print len(tokens)
         for x in xrange(len(tokens)):
             if len(procedure.findall(tokens[x])) > 0:
@@ -183,19 +185,20 @@ class Navigation:
                                                  tokens[x],
                                                  tokens[x - 1])
                     flownRoute.extend(terminal)
-                    # print "%i: FOUND STAR: %s Transition: %s FIXES %s "  %
-                    # (x,tokens[x],tokens[x-1]," ".join(terminal))
                 else:
                     airway = self.get_airway(tokens[x - 1],
                                              tokens[x],
                                              tokens[x + 1])
                     flownRoute.extend(airway)
-                    # print "%i: FOUND AIRWAY: %s AIRWAY FIXES: %s " %
-                    # (x,tokens[x], " ".join(airway))
             else:
-                flownRoute.append(tokens[x])
+                if x < len(tokens) - 1:
+                    flownRoute.append(self.get_waypoint(tokens[x],
+                                      next_waypoint=tokens[x + 1])[0])
+                elif x == len(tokens) - 1:
+                    flownRoute.append(self.get_waypoint(tokens[x],
+                                      next_waypoint=tokens[x - 1])[0])
                 # print "%i: %s" % (x,tokens[x])
-        flownRoute.append(arrAirport)
+        flownRoute.append(self.get_airport_info(arrAirport))
         return self.remove_duplicate_waypoint(flownRoute)
 
     def get_airway(self, entry, airway, exit):
@@ -221,70 +224,42 @@ class Navigation:
 
         for row in query:
             if row.isStart == 1:
-                airways.append(row.wp1_ident)
+                airways.append(self.get_waypoint(row.wp1_id)[0])
             elif row.isEnd == 1:
-                airways.append(row.wp2_ident)
+                airways.append(self.get_waypoint(row.wp2_id)[0])
             else:
-                airways.append(row.wp2_ident)
+                airways.append(self.get_waypoint(row.wp2_id)[0])
+        session.close()
         try:
-            entryPos = airways.index(entry)
-            exitPos = airways.index(exit)
+            entryPos = -1
+            exitPos = -1
+            for i, waypoint in enumerate(airways):
+                if waypoint['ident'] == entry:
+                    entryPos = i
+                elif waypoint['ident'] == exit:
+                    exitPos = i
+                elif entryPos > -1 and exitPos > -1:
+                    break
             if entryPos < exitPos:
                 return airways[entryPos:exitPos + 1]
             else:
                 return airways[exitPos:entryPos]
         except ValueError:
             pass
-        session.close()
-
-    def get_airwayRoute(self, airwayid, current, next, end, route):
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-        #                 0      1     2      3          4           5       6
-        # sql = '''select id,airwayid,level,waypoint1id,waypoint2id,isstart,isend from airwaylegs where airwayid = %s and waypoint1id = %s  and waypoint2id <> %s''' % (airwayid, next, current)
-        # print "get_airway: " + sql
-        # c.execute(sql)
-        res = session.query(AirwayLeg).filter(AirwayLeg.id == airwayid,
-                                              AirwayLeg.waypoint1ID == next,
-                                              AirwayLeg.waypoint2ID != current)
-        for al in res:
-            # print row
-            for waypoint in end:
-                print "WAYPOINTS: %s == %s " % (waypoint['id'], al.waypoint2ID)
-                if waypoint['id'] == al.waypoint2ID:
-                    session.close()
-                    return " " + self.get_waypoint(al.waypoint1ID)[0]['ident'] + " " + waypoint['ident']
-                    # TODO: FIX THIS
-                    # route.append(self.get_waypoint_by_id(al.waypoint1ID)
-                    # route.append(waypoint)
-                    # return route
-            if al.isEnd > al.isStart:
-                return None
-            print route
-            route.append(self.get_waypoint(al.waypoint1ID)[0])
-            session.close()
-            return self.get_airwayRoute(airwayid, al.waypoint1ID, al.waypoint2ID, end, route)
+        return None
 
     def get_terminal(self, airport, name, transition):
         Session = sessionmaker(bind=self.engine)
         session = Session()
-        # conn = self.conn
-        # c = self.c
-        # terminalLegsSQL = '''select id,wptid from terminallegs where  Transition = '%s' and terminalid in (select id from terminals where ICAO = '%s' and fullname = '%s')'''
-        # waypointSQL = '''select ident,Latitude,Longtitude from waypoints where id = %i'''
-        # c.execute(terminalLegsSQL % (transition, airport, name))
-
-        res = session.query("ID", "WptID").from_statement("select ID,WptID from TerminalLegs where Transition = :transition and TerminalID in (select ID from Terminals where ICAO = :airport and FullName = :name)").params(
+        query_template = "SELECT ID,WptID FROM TerminalLegs "
+        "WHERE Transition = :transition AND TerminalID "
+        "IN (select ID FROM Terminals "
+        "WHERE ICAO = :airport AND FullName = :name)"
+        res = session.query("ID", "WptID").from_statement(query_template).params(
             transition=transition, airport=airport, name=name)
-
-        waypointidlist = []
-        for row in res:
-            waypointidlist.append(row[1])
         waypoints = []
-        for waypointID in waypointidlist:
-            res = session.query(Waypoint).filter(Waypoint.id == waypointID)
-            for way in res:
-                waypoints.append(way.ident)
+        for row in res:
+            waypoints.append(self.get_waypoint(row[1])[0])
         session.close()
         return waypoints
 
