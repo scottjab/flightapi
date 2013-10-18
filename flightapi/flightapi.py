@@ -148,6 +148,21 @@ def navaid(navaid_id):
         except TypeError:
             return jsonify('ERROR: encoding navaid data')
 
+@fapi.route('/api/route', methods=['PUT'])
+@auth.required
+def route():
+    nav = Navigation(eng)
+    if request.method = 'PUT':
+        if request.data is not None:
+            try:
+                data = json.loads(request.data)
+                route = data['route']
+                expanded_route = nav.parser(route)
+                return jsonify(route=expanded_route)
+            except KeyError:
+                return jsonify(error='ERROR: Need a route')
+            except ValueError:
+                return jsonify(error='ERROR: invaild JSON')
 
 # Default routes
 @fapi.route('/')
