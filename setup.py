@@ -27,7 +27,7 @@ setuptools.setup(
     install_requires=reqs.readlines(),
     entry_points = {
         'console_scripts': [
-            'flightapid = flightapi.flightapi:main',
+            'flightapid = flightapi:main',
         ],
     },
     packages=setuptools.find_packages(),

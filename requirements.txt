@@ -3,4 +3,6 @@ beautifulsoup4
 pymetar
 sqlalchemy
 flask
-Flask-SQLAlchemy 
+Flask-SQLAlchemy
+MySQL-python
+
