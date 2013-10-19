@@ -116,7 +116,7 @@ def apt(icao):
     icao = icao.upper()
     nav = Navigation(eng)
     if icao is not None:
-        airport = nav.get_airport_info(icao)
+        airport = nav.get_airport(icao)
         if airport is None:
             return jsonify('Airport not found')
         # I may overload this, but this will work for now
@@ -139,8 +139,6 @@ def navaid(navaid_id):
         if navaid is None:
             return jsonify('Navaid not found')
         try:
-            import pprint
-            logging.info(pprint.pformat(navaid))
             if len(navaid) > 0:
                 return jsonify(navaids=navaid)
             else:
@@ -152,7 +150,7 @@ def navaid(navaid_id):
 @auth.required
 def route():
     nav = Navigation(eng)
-    if request.method = 'PUT':
+    if request.method == 'PUT':
         if request.data is not None:
             try:
                 data = json.loads(request.data)
