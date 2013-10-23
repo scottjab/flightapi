@@ -6,4 +6,5 @@ flask
 Flask-SQLAlchemy
 Flask-RESTful
 MySQL-python
+nose
 
