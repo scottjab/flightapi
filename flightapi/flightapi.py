@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from flask import Flask, abort
+from flask import Flask, abort, g
 from flask.ext.restful import Api
 
 from sqlalchemy import create_engine
@@ -37,14 +37,15 @@ fapi = Flask(__name__)
 auth = Authentication(fapi)
 api = Api(fapi)
 eng = create_engine('mysql+mysqldb://%s:%s@%s/%s' % (CONF['dbuser'],
-                                                     CONF['dbpass'],
-                                                     CONF['dbhost'],
-                                                     CONF['db']),
+                                                            CONF['dbpass'],
+                                                            CONF['dbhost'],
+                                                            CONF['db']),
                     pool_size=2,
                     pool_recycle=3600,
                     echo=False)
-fapi.eng = eng
-
+ctx = fapi.app_context()
+ctx.push()
+g.eng = eng
 
 # Default routes
 @fapi.route('/')
