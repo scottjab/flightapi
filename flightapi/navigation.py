@@ -22,6 +22,16 @@ class Navigation:
         # super(Navigation, self)
         self.engine = engine
 
+    def session_builder(self, session):
+        if session is None:
+            Session = sessionmaker(bind=self.engine)
+            session = Session()
+        return session
+
+    def close_session(self, existing_session, session):
+        if existing_session is None:
+            session.close()
+
     def decode_freq(self, encodedfreq):
         try:
             decodedFreq = str(hex(encodedfreq))[2:]
@@ -72,11 +82,7 @@ class Navigation:
         return (math.degrees(bearing) + 360) % 360
 
     def get_waypoint(self, ident, next_waypoint=None, existing_session=None):
-        if existing_session is None:
-            Session = sessionmaker(bind=self.engine)
-            session = Session()
-        else:
-            session = existing_session
+        session = self.session_builder(existing_session)
         query = None
         try:
             ident = int(ident)
@@ -122,15 +128,11 @@ class Navigation:
                             shortest_waypoint = waypoint
                         elif distance < current_shortest:
                             shortest_waypoint = waypoint
-                if existing_session is None:
-                    session.close()
+                    self.close_session(existing_session, session)
                 return [shortest_waypoint]
+        self.close_session(existing_session, session)
         if len(waypoints) > 0:
-            if existing_session is None:
-                session.close()
             return waypoints
-        if existing_session is None:
-            session.close()
         return None
 
     def get_waypoint_distance(self, start, end):
@@ -197,11 +199,7 @@ class Navigation:
 
     def get_airway(self, entry, airway, exit, existing_session=None):
         # I am dumb.
-        if existing_session is None:
-            Session = sessionmaker(bind=self.engine)
-            session = Session()
-        else:
-            session = existing_session
+        session = self.session_builder(existing_session)
         airways = []
 
         waypoint1_alias = aliased(Waypoint)
@@ -228,8 +226,7 @@ class Navigation:
         for waypoint in airway_ids:
             airways.append(self.get_waypoint(int(waypoint),
                                              existing_session=session)[0])
-        if existing_session is None:
-            session.close()
+        self.close_session(existing_session, session)
         try:
             entryPos = -1
             exitPos = -1
@@ -249,11 +246,7 @@ class Navigation:
         return None
 
     def get_terminal(self, airport, name, transition, existing_session=None):
-        if existing_session is None:
-            Session = sessionmaker(bind=self.engine)
-            session = Session()
-        else:
-            session = existing_session
+        session = self.session_builder(existing_session)
         query_template = """SELECT ID,WptID FROM TerminalLegs
         WHERE Transition = :transition AND TerminalID
         IN (select ID FROM Terminals
@@ -262,8 +255,7 @@ class Navigation:
         waypoints = []
         for row in res:
             waypoints.append(self.get_waypoint(row[1])[0])
-        if existing_session is None:
-            session.close()
+        self.close_session(existing_session, session)
         return waypoints
 
     def calculate_time(self, speed, total):
@@ -276,11 +268,7 @@ class Navigation:
     def get_airport(self, icao, existing_session=None):
         """Grab info about a field for the bot"""
         icao = str(icao).upper()
-        if existing_session is None:
-            Session = sessionmaker(bind=self.engine)
-            session = Session()
-        else:
-            session = existing_session
+        session = self.session_builder(existing_session)
         resultSet = {}
         try:
             ap = session.query(Airport).filter(
@@ -323,8 +311,7 @@ class Navigation:
                 rw['ils'] = ils
             runways.append(rw)
         resultSet['runways'] = runways
-        if existing_session is None:
-            session.close()
+        self.close_session(existing_session, session)
         return resultSet
 
     def morse_code(self, text):
