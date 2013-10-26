@@ -21,6 +21,21 @@ class Navaid(Resource):
         abort(404, message='Missing navaid ident')
 
 
+class Airway(Resource):
+    def put(self):
+        if request.json is not None:
+            nav = Navigation(g.eng)
+            try:
+                entry = request.json['entry']
+                airway = request.json['airway']
+                exit = request.json['exit']
+                airway = nav.get_airway(entry, airway, exit)
+                return {'airway': airway}
+            except KeyError as e:
+                abort(404, message='Airway JSON missing: %s' % e)
+        abort(404, message='Missing Airway')
+
+
 class Route(Resource):
     def put(self):
         if request.json is not None:

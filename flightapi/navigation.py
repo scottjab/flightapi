@@ -22,6 +22,16 @@ class Navigation:
         # super(Navigation, self)
         self.engine = engine
 
+    def session_builder(self, session):
+        if session is None:
+            Session = sessionmaker(bind=self.engine)
+            session = Session()
+        return session
+
+    def close_session(self, existing_session, session):
+        if existing_session is None:
+            session.close()
+
     def decode_freq(self, encodedfreq):
         try:
             decodedFreq = str(hex(encodedfreq))[2:]
@@ -71,9 +81,8 @@ class Navigation:
         bearing = math.atan2(y, x)
         return (math.degrees(bearing) + 360) % 360
 
-    def get_waypoint(self, ident, next_waypoint=None):
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
+    def get_waypoint(self, ident, next_waypoint=None, existing_session=None):
+        session = self.session_builder(existing_session)
         query = None
         try:
             ident = int(ident)
@@ -100,10 +109,11 @@ class Navigation:
             waypoints.append(waypoint)
 
         # logic to figure out which waypoint you really want.
-        if next_waypoint is not None:
+        if next_waypoint is not None and not isinstance(ident, int):
             next_waypoints = None
             if isinstance(next_waypoint, str):
-                next_waypoints = self.get_waypoint(next_waypoint)
+                next_waypoints = self.get_waypoint(next_waypoint,
+                                                   existing_session=session)
             elif isinstance(next_waypoint, dict):
                 next_waypoints = [next_waypoint]
             if next_waypoints is not None:
@@ -118,7 +128,9 @@ class Navigation:
                             shortest_waypoint = waypoint
                         elif distance < current_shortest:
                             shortest_waypoint = waypoint
+                    self.close_session(existing_session, session)
                 return [shortest_waypoint]
+        self.close_session(existing_session, session)
         if len(waypoints) > 0:
             return waypoints
         return None
@@ -185,11 +197,9 @@ class Navigation:
         result['expanded_route'] = flownRoute
         return result
 
-    def get_airway(self, entry, airway, exit):
+    def get_airway(self, entry, airway, exit, existing_session=None):
         # I am dumb.
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-
+        session = self.session_builder(existing_session)
         airways = []
 
         waypoint1_alias = aliased(Waypoint)
@@ -206,13 +216,17 @@ class Navigation:
             .join(waypoint2_alias, AirwayLeg.waypoint2ID == waypoint2_alias.id)
             .filter(Airway.ident == airway))
         rows = session.execute(query)
-        for row in rows:
+        airway_ids = []
+        for row in rows.fetchall():
             if row[6] == 1:
-                airways.append(self.get_waypoint(row[3])[0])
+                airway_ids.append(row[3])
             else:
-                airways.append(self.get_waypoint(row[5])[0])
+                airway_ids.append(row[5])
 
-        session.close()
+        for waypoint in airway_ids:
+            airways.append(self.get_waypoint(int(waypoint),
+                                             existing_session=session)[0])
+        self.close_session(existing_session, session)
         try:
             entryPos = -1
             exitPos = -1
@@ -231,9 +245,8 @@ class Navigation:
             pass
         return None
 
-    def get_terminal(self, airport, name, transition):
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
+    def get_terminal(self, airport, name, transition, existing_session=None):
+        session = self.session_builder(existing_session)
         query_template = """SELECT ID,WptID FROM TerminalLegs
         WHERE Transition = :transition AND TerminalID
         IN (select ID FROM Terminals
@@ -242,7 +255,7 @@ class Navigation:
         waypoints = []
         for row in res:
             waypoints.append(self.get_waypoint(row[1])[0])
-        session.close()
+        self.close_session(existing_session, session)
         return waypoints
 
     def calculate_time(self, speed, total):
@@ -252,12 +265,10 @@ class Navigation:
         h, m = divmod(m, 60)
         print "%d:%02d:%02d" % (h, m, s)
 
-    def get_airport(self, icao):
+    def get_airport(self, icao, existing_session=None):
         """Grab info about a field for the bot"""
         icao = str(icao).upper()
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-
+        session = self.session_builder(existing_session)
         resultSet = {}
         try:
             ap = session.query(Airport).filter(
@@ -300,7 +311,7 @@ class Navigation:
                 rw['ils'] = ils
             runways.append(rw)
         resultSet['runways'] = runways
-        session.close()
+        self.close_session(existing_session, session)
         return resultSet
 
     def morse_code(self, text):
