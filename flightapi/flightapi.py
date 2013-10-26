@@ -9,7 +9,7 @@ from authentication import Authentication
 
 from api.weather import LongMetar, Metar, Taf
 from api.airport import Airport
-from api.navaids import Navaid, Route
+from api.navaids import Airway, Navaid, Route
 
 import json
 import os
@@ -67,6 +67,7 @@ api.add_resource(Taf, '/api/taf/<station>')
 api.add_resource(Airport, '/api/airport/<icao>')
 
 # Navaid methods
+api.add_resource(Airway, '/api/airway')
 api.add_resource(Navaid, '/api/navaid/<ident>')
 api.add_resource(Route, '/api/route')
 
