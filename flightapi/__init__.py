@@ -11,12 +11,11 @@ NAME = 'flightapi'
 DESC = 'An api that has basic navigation routing and weather.'
 
 from flightapi import fapi
-
-
 def main():
-    debug = bool(os.environ.get("FAPI_DEBUG", None))
+    host = os.environ.get('FAPIHOST', '127.0.0.1')
+    debug = bool(os.environ.get('FAPIDEBUG', None))
     fapi.debug = debug
-    fapi.run()
+    fapi.run(host=host)
 
 if __name__ == '__main__':
     main()
