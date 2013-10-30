@@ -63,6 +63,22 @@ class Navigation:
         d2 = np.multiply(radius, c2)
         return d2
 
+    def get_distance_by_name(self, origin, destination, existing_session=None):
+        session = self.session_builder(existing_session)
+        # This may need refactoring.
+        # Lets assume the closest waypoints
+        org = self.get_waypoint(origin,
+                                next_waypoint=destination,
+                                existing_session=existing_session)
+        dest = self.get_waypoint(destination,
+                                 next_waypoint=origin,
+                                 existing_session=existing_session)
+        if len(org) == 0 or len(dest) == 0:
+            return None
+        distance = self.get_waypoint_distance(org[0], dest[0])
+        self.close_session(existing_session, session)
+        return distance
+
     def bearing(self, origin, destination):
         lat1 = origin[0]
         lon1 = origin[1]
@@ -114,7 +130,7 @@ class Navigation:
             if isinstance(next_waypoint, str):
                 next_waypoints = self.get_waypoint(next_waypoint,
                                                    existing_session=session)
-            elif isinstance(next_waypoint, dict):
+            elif isinstance(next_waypoint, list):
                 next_waypoints = [next_waypoint]
             if next_waypoints is not None:
                 current_shortest = None
@@ -254,7 +270,8 @@ class Navigation:
         res = session.query("ID", "WptID").from_statement(query_template).params(transition=transition, airport=airport, name=name)
         waypoints = []
         for row in res:
-            waypoints.append(self.get_waypoint(row[1])[0])
+            waypoints.append(self.get_waypoint(row[1], existing_session=existing_session
+                )[0])
         self.close_session(existing_session, session)
         return waypoints
 

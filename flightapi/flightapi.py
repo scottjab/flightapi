@@ -9,7 +9,7 @@ from authentication import Authentication
 
 from api.weather import LongMetar, Metar, Taf
 from api.airport import Airport
-from api.navaids import Airway, Navaid, Route
+from api.navaids import Airway, Distance, Navaid, Route, Terminal
 
 import json
 import os
@@ -37,15 +37,16 @@ fapi = Flask(__name__)
 auth = Authentication(fapi)
 api = Api(fapi)
 eng = create_engine('mysql+mysqldb://%s:%s@%s/%s' % (CONF['dbuser'],
-                                                            CONF['dbpass'],
-                                                            CONF['dbhost'],
-                                                            CONF['db']),
+                                                     CONF['dbpass'],
+                                                     CONF['dbhost'],
+                                                     CONF['db']),
                     pool_size=2,
                     pool_recycle=3600,
                     echo=False)
 ctx = fapi.app_context()
 ctx.push()
 g.eng = eng
+
 
 # Default routes
 @fapi.route('/')
@@ -70,7 +71,8 @@ api.add_resource(Airport, '/api/airport/<icao>')
 api.add_resource(Airway, '/api/airway')
 api.add_resource(Navaid, '/api/navaid/<ident>')
 api.add_resource(Route, '/api/route')
-
+api.add_resource(Distance, '/api/distance')
+api.add_resource(Terminal, '/api/terminal')
 
 if __name__ == '__main__':
     fapi.run()
