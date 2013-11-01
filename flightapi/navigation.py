@@ -120,7 +120,7 @@ class Navigation:
                 waypoint['name'] = navaid.name
             waypoint['ident'] = waypoint_row.ident
             waypoint['latitude'] = waypoint_row.latitude
-            waypoint['longtitude'] = waypoint_row.longtitude
+            waypoint['longitude'] = waypoint_row.longitude
             waypoint['collocated'] = waypoint_row.collocated
             waypoints.append(waypoint)
 
@@ -153,9 +153,9 @@ class Navigation:
 
     def get_waypoint_distance(self, start, end):
         return self.distance((start['latitude'],
-                              start['longtitude']),
+                              start['longitude']),
                             (end['latitude'],
-                             end['longtitude']))
+                             end['longitude']))
 
     def remove_duplicate_waypoint(self, route):
         result = []
@@ -296,7 +296,7 @@ class Navigation:
         resultSet['name'] = ap.name
         resultSet['elevation'] = ap.elevation
         resultSet['latitude'] = ap.latitude
-        resultSet['longtitude'] = ap.longtitude
+        resultSet['longitude'] = ap.longitude
         runways = []
         # c.execute("""select ident, length, TrueHeading, Surface, Elevation
         # from runways where AirportID = %i order by ident""" % int(airportId))
@@ -309,7 +309,7 @@ class Navigation:
             rw['surface'] = runway.surfaceType.description
             rw['elevation'] = runway.elevation
             rw['latitude'] = runway.latitude
-            rw['longtitude'] = runway.longtitude
+            rw['longitude'] = runway.longitude
             rw['width'] = runway.width
             if len(runway.ils) > 0:
                 ilsobj = runway.ils[0]
@@ -317,7 +317,7 @@ class Navigation:
                 ils['freq'] = self.decode_freq(ilsobj.freq)
                 ils['gs_angle'] = ilsobj.gsAngle
                 ils['latitude'] = ilsobj.latitude
-                ils['longtitude'] = ilsobj.longtitude
+                ils['longitude'] = ilsobj.longitude
                 ils['category'] = ilsobj.category
                 ils['ident'] = ilsobj.ident
                 ils['morse'] = self.morse_code(ilsobj.ident)

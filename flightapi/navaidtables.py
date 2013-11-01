@@ -28,7 +28,7 @@ class ILS(Base):
     freq = Column('Freq', Integer(length=11))
     gsAngle = Column('GsAngle', Float)
     latitude = Column('Latitude', Float)
-    longtitude = Column('Longtitude', Float)
+    longitude = Column('Longtitude', Float)
     category = Column('Category', Integer(length=4))
     ident = Column('Ident', String(length=5))
     locCourse = Column('LocCourse', Float)
@@ -53,7 +53,7 @@ class Runway(Base):
                      String(length=3),
                      ForeignKey('SurfaceTypes.SurfaceType'))
     latitude = Column('Latitude', Float)
-    longtitude = Column('Longtitude', Float)
+    longitude = Column('Longtitude', Float)
     elevation = Column('Elevation',
                        Integer(length=11))
     ils = relationship(ILS)
@@ -70,7 +70,7 @@ class Airport(Base):
     icao = Column('ICAO', String(length=4))
     primaryID = Column('PrimaryID', Integer(length=11))
     latitude = Column('Latitude', Float)
-    longtitude = Column('Longtitude', Float)
+    longitude = Column('Longtitude', Float)
     elevation = Column('Elevation', Integer(length=11))
     runways = relationship(Runway)
 
@@ -127,7 +127,7 @@ class Navaid(Base):
     channel = Column('Channel', String(length=4))
     usage = Column('Usage', String(length=1))
     latitude = Column('Latitude', Float)
-    longtitude = Column('Longtitude', Float)
+    longitude = Column('Longtitude', Float)
     elevation = Column('Elevation', Integer(length=11))
     slavedVar = Column('SlavedVar', Float)
 
@@ -160,7 +160,7 @@ class Waypoint(Base):
     collocated = Column('Collocated', Integer(length=1))
     name = Column('Name', String(length=25))
     latitude = Column('Latitude', Float)
-    longtitude = Column('Longtitude', Float)
+    longitude = Column('Longtitude', Float)
     navaidID = Column('NavaidID', Integer(length=11), ForeignKey("Navaids.ID"))
     navaid = relationship(Navaid)
 
