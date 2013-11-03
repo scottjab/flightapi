@@ -8,7 +8,7 @@ from flightapi import weather
 class Taf(Resource):
     def get(self, station):
         try:
-            return {station: weather.get_taf(station)}
+            return {'taf': weather.get_taf(station)}
         except Exception:
             abort(404, message='Cannot find TAF for %s' % (station, ))
 
@@ -16,7 +16,7 @@ class Taf(Resource):
 class Metar(Resource):
     def get(self, station):
         try:
-            return {station: weather.get_parsed_metar(station).code}
+            return {'metar': weather.get_parsed_metar(station).code}
         except Exception:
             abort(404, message='Cannot find METAR for %s' % (station, ))
 
