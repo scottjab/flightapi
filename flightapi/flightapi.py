@@ -51,7 +51,7 @@ g.eng = eng
 # Default routes
 @fapi.route('/')
 def nope():
-    abort(404)
+	abort(404)
 
 
 @fapi.route('/favicon.ico')
